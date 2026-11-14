@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "test": "node scripts/run-playwright-with-blob-upload.js",
+    "test:eventhub": "node scripts/run-playwright-with-blob-upload.js tests/eventhub-booking.spec.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.6"
+  }
+}
