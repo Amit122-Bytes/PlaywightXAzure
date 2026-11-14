@@ -137,8 +137,10 @@ async function main() {
     throw new Error('AZURE_STORAGE_CONNECTION_STRING is required. Copy it from the storage account Access keys page and set it in this terminal before running the test.');
   }
   await mkdir(path.join(projectRoot, 'screenshots'), { recursive: true });
-  const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-  const testExitCode = await run(npx, ['playwright', 'test', ...process.argv.slice(2)]);
+  // Launch Playwright's JavaScript CLI directly. This avoids spawning the
+  // Windows npx.cmd shim, which can fail with EINVAL under Node on Windows.
+  const playwrightCli = require.resolve('@playwright/test/cli');
+  const testExitCode = await run(process.execPath, [playwrightCli, 'test', ...process.argv.slice(2)]);
   try {
     await uploadArtifacts();
   } catch (error) {
