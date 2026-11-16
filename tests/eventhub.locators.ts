@@ -1,5 +1,12 @@
 import { type Locator, type Page } from '@playwright/test';
 
+function xpathLiteral(value: string): string {
+  if (!value.includes("'")) return `'${value}'`;
+  if (!value.includes('"')) return `"${value}"`;
+
+  return `concat(${value.split("'").map((part) => `'${part}'`).join(', "\'", ')})`;
+}
+
 export class EventHubLocators {
   constructor(private readonly page: Page) {}
 
@@ -71,6 +78,36 @@ export class EventHubLocators {
     return this.page
       .getByText(/booking confirmed|booking successful|registration successful/i)
       .first();
+  }
+
+  get bookingConfirmationDetails(): Locator {
+    return this.page.locator(
+      "xpath=//div[contains(concat(' ', normalize-space(@class), ' '), ' bg-indigo-50 ') and contains(concat(' ', normalize-space(@class), ' '), ' border-indigo-100 ') and contains(concat(' ', normalize-space(@class), ' '), ' rounded-xl ') and contains(concat(' ', normalize-space(@class), ' '), ' p-4 ') and contains(concat(' ', normalize-space(@class), ' '), ' mb-5 ') and contains(concat(' ', normalize-space(@class), ' '), ' text-left ') and contains(concat(' ', normalize-space(@class), ' '), ' space-y-2 ')]",
+    ).first();
+  }
+
+  get bookingReference(): Locator {
+    // Equivalent to the supplied confirmation XPath, but tolerant of a
+    // different CSS-class ordering on the panel.
+    return this.bookingConfirmationDetails.locator('xpath=.//div[1]').first();
+  }
+
+  bookingCustomerName(customerName: string): Locator {
+    return this.bookingConfirmationDetails.locator(
+      `xpath=.//span[normalize-space()=${xpathLiteral(customerName)}]`,
+    ).first();
+  }
+
+  bookingTicketsQuantity(quantity: number): Locator {
+    return this.bookingConfirmationDetails.locator(
+      `xpath=.//span[normalize-space()=${xpathLiteral(String(quantity))}]`,
+    ).first();
+  }
+
+  get bookingTotalPrice(): Locator {
+    return this.bookingConfirmationDetails.locator(
+      "xpath=.//div[span[normalize-space()='Total']]/span[contains(concat(' ', normalize-space(@class), ' '), ' font-medium ') and contains(concat(' ', normalize-space(@class), ' '), ' text-gray-900 ')]",
+    ).first();
   }
 
   async firstVisible(locators: Locator[], name: string): Promise<Locator> {

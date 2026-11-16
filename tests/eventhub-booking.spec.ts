@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { storeBookingConfirmation } from './azure-table-storage';
 import { EventHubLocators } from './eventhub.locators';
 import { createBookingTestData, eventHub } from './eventhub.test-data';
 
@@ -9,7 +10,22 @@ async function captureStep(page: Page, runId: number, step: string): Promise<voi
   });
 }
 
-test('EventHub - fresh user can book an available event', async ({ page }) => {
+function normalizedText(value: string | null, name: string): string {
+  const result = value?.replace(/\s+/g, ' ').trim();
+  if (!result) throw new Error(`Booking confirmation ${name} was empty.`);
+  return result;
+}
+
+function bookingReferenceFrom(value: string): string {
+  return value.replace(/^(?:booking\s*)?(?:reference|ref|id)\s*[:#-]?\s*/i, '').trim();
+}
+
+function priceAmountFrom(value: string): number | undefined {
+  const amount = Number(value.replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(amount) ? amount : undefined;
+}
+
+test('EventHub - fresh user can book an available event', async ({ page }, testInfo) => {
   test.setTimeout(90_000);
 
   const testData = createBookingTestData(Date.now());
@@ -95,6 +111,40 @@ test('EventHub - fresh user can book an available event', async ({ page }) => {
 
   await test.step('Verify the booking confirmation', async () => {
     await expect(locators.bookingConfirmation).toBeVisible();
+    await expect(locators.bookingConfirmationDetails).toBeVisible();
+
+    const customerName = locators.bookingCustomerName(eventHub.attendee.fullName);
+    const ticketsQuantity = locators.bookingTicketsQuantity(1);
+    await expect(locators.bookingReference).toBeVisible();
+    await expect(customerName).toBeVisible();
+    await expect(ticketsQuantity).toBeVisible();
+    await expect(locators.bookingTotalPrice).toBeVisible();
+
+    const [bookingReferenceText, capturedCustomerName, capturedQuantity, totalPrice] = await Promise.all([
+      locators.bookingReference.textContent(),
+      customerName.textContent(),
+      ticketsQuantity.textContent(),
+      locators.bookingTotalPrice.textContent(),
+    ]);
+    const bookingReference = bookingReferenceFrom(normalizedText(bookingReferenceText, 'reference'));
+    const quantity = Number(normalizedText(capturedQuantity, 'ticket quantity'));
+    if (!bookingReference || !Number.isInteger(quantity) || quantity < 1) {
+      throw new Error('Booking confirmation contained an invalid booking reference or ticket quantity.');
+    }
+
+    const capturedTotalPrice = normalizedText(totalPrice, 'total price');
+    const confirmation = {
+      bookingReference,
+      customerName: normalizedText(capturedCustomerName, 'customer name'),
+      ticketsQuantity: quantity,
+      totalPrice: capturedTotalPrice,
+      totalPriceAmount: priceAmountFrom(capturedTotalPrice),
+      capturedAt: new Date().toISOString(),
+      testFile: testInfo.file,
+      testTitle: testInfo.title,
+    };
+    await storeBookingConfirmation(confirmation);
+
     await captureStep(page, runId, '05-booking-confirmed');
   });
 });
