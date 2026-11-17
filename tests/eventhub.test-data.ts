@@ -2,7 +2,7 @@ export const eventHub = {
   baseURL: 'https://eventhub.rahulshettyacademy.com',
   password: 'Test@12345',
   attendee: {
-    fullName: 'Test',
+    fullName: 'Amit Meta',
     phone: '9876543210',
   },
 } as const;

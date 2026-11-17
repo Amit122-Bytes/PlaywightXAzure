@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import { storeBookingConfirmation } from './azure-table-storage';
+import { storeBookingConfirmationInKeyVault } from './azure-key-vault';
+//import { storeBookingConfirmation } from './azure-table-storage';
 import { EventHubLocators } from './eventhub.locators';
 import { createBookingTestData, eventHub } from './eventhub.test-data';
 
@@ -143,7 +144,8 @@ test('EventHub - fresh user can book an available event', async ({ page }, testI
       testFile: testInfo.file,
       testTitle: testInfo.title,
     };
-    await storeBookingConfirmation(confirmation);
+    await storeBookingConfirmationInKeyVault(confirmation);
+    //await storeBookingConfirmation(confirmation);
 
     await captureStep(page, runId, '05-booking-confirmed');
   });
